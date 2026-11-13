@@ -676,7 +676,7 @@ async function act(fn) {
 async function mined(txPromise, what) {
   status(`${what}: waiting for the block…`);
   const tx = await txPromise;
-  const r = await tx.wait(1, 60000);
+  const r = await tx.wait(1, NET.local ? 60000 : 240000); // public test chains can take a while
   if (r.status !== 1) throw new Error(`${what}: included in block ${r.blockNumber} but failed.`);
   return r;
 }
@@ -770,7 +770,7 @@ async function requestRead(app) {
   const s = S.sessions.find((x) => x.id === S.selected);
   if (!s) return status("Select a session first.", true);
   if ((await S.provider.getBalance(app.wallet.address)) < APP_MIN) {
-    await mined(S.owner.sendTransaction({ to: app.wallet.address, value: APP_FLOAT }), `Sending ${app.name} ${ethers.formatEther(APP_FLOAT)} ${NET.symbol} for fees`);
+    await mined(S.owner.sendTransaction({ to: app.wallet.address, value: APP_FLOAT }), `Sending ${app.name} ${fmtCoin(APP_FLOAT, 6)} ${NET.symbol} for fees`);
   }
   const r = await mined(S.vault.connect(app.wallet).requestRead(S.address, s.id), `${app.name} is asking the contract`);
   if (!eventIn(r, "ReadAllowed")) {
@@ -805,17 +805,25 @@ new ResizeObserver(() => { if (S.owner) drawTrend(); }).observe($("trend-panel")
   const local = Number(cfg.chainId) === 31337;
   NET = { ...NET, local, chainId: Number(cfg.chainId), evmRpc: cfg.rpc || NET.evmRpc, name: cfg.name || NET.name, symbol: cfg.symbol || NET.symbol };
   if (!local) {
-    APP_FLOAT = ethers.parseEther("0.0002"); APP_MIN = ethers.parseEther("0.00005"); FUND_BELOW = ethers.parseEther("0.0005");
     LOG_WINDOW = Number(cfg.logWindow) || LOG_WINDOW;
     if (/^https:\/\//.test(cfg.faucet || "")) $("coins-faucet").href = cfg.faucet;
   }
-  S.provider = new ethers.JsonRpcProvider(NET.evmRpc, NET.chainId, { staticNetwork: true, pollingInterval: local ? 500 : 1500 });
+  S.provider = new ethers.JsonRpcProvider(NET.evmRpc, NET.chainId, { staticNetwork: true, pollingInterval: local ? 500 : 4000 });
   const fix = local ? ` Start it with <span class="mono">make chain</span>, run <span class="mono">make deploy</span>, then reload.` : ` Try again in a minute.`;
   let chainId;
   try { chainId = Number(await S.provider.send("eth_chainId", [])); }
   catch { setConn(false); return notice(`Cannot reach the chain at <span class="mono">${esc(NET.evmRpc)}</span>.${fix}`); }
   if (chainId !== NET.chainId) { setConn(false); return notice(`The chain at <span class="mono">${esc(NET.evmRpc)}</span> is chain ${chainId}, but the vault was deployed to chain ${esc(NET.chainId)}.`); }
   setConn(true);
+  if (!local) {
+    // Size the amounts from the chain's current fee, with a floor for quiet days.
+    const fee = await S.provider.getFeeData().catch(() => ({}));
+    const oneTx = (fee.maxFeePerGas ?? fee.gasPrice ?? 0n) * 120000n;
+    const atLeast = (a, b) => (a > b ? a : b);
+    APP_MIN = atLeast(oneTx * 2n, ethers.parseEther("0.00002"));
+    APP_FLOAT = APP_MIN * 4n;
+    FUND_BELOW = atLeast(oneTx * 5n, ethers.parseEther("0.0005"));
+  }
   if ((await S.provider.getCode(cfg.address)) === "0x") return notice(`No contract at <span class="mono">${esc(cfg.address)}</span>.${local ? " The chain was probably restarted. Run <span class=\"mono\">make deploy</span>, then reload." : ""}`);
   S.cfg = cfg;
   renderLocked();

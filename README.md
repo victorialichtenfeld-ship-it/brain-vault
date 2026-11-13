@@ -36,8 +36,9 @@ typing in other apps; that would need a desktop app.
 ## Online
 
 The public site is https://victorialichtenfeld-ship-it.github.io/brain-vault/ and
-runs on the Base Sepolia test chain. Visitors create a vault in their own
-browser and need free test coins from a faucet to pay the small fees. `make
+runs on the Sepolia test chain. Visitors create a vault in their own
+browser and need free test coins to pay the small fees; the no-account faucet at
+https://sepolia-faucet.pk910.de/ hands them out. `make
 deploy-public` deploys the contract there (the deploy key lives in the
 git-ignored `.keys/` folder) and writes `web/vault.public.json`; pushing to
 `main` republishes the site.
