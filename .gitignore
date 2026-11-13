@@ -1,0 +1,6 @@
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+# written by scripts/deploy.sh; the address changes with every fresh chain
+web/vault.config.json
+.DS_Store

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Brain Data Vault</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <span class="brand">Brain Data Vault <span class="tick">demo</span></span>
+    <span style="flex:1"></span>
+    <div class="conn"><span id="conn-dot" class="dot"></span><span id="conn-text">Connecting…</span></div>
+  </header>
+
+  <main class="wrap">
+    <section class="panel narrow" id="notice" hidden>
+      <h1>Brain Data Vault</h1>
+      <p id="notice-text"></p>
+    </section>
+
+    <section class="panel narrow" id="locked" hidden>
+      <h1 id="locked-title">Unlock your vault</h1>
+      <p class="hint">Your typing-rhythm data is encrypted in this browser. The chain stores only its fingerprint and who may read it.</p>
+      <form id="f-unlock" class="wrap" hidden>
+        <label>Vault password<input id="unlock-pw" type="password" autocomplete="current-password" required></label>
+        <div class="row"><button class="primary" type="submit">Unlock</button></div>
+      </form>
+      <form id="f-create" class="wrap" hidden>
+        <p class="hint">A new key is generated in this browser and stored only here, encrypted with your password. It is never shown or sent anywhere. If you forget the password, the vault cannot be opened.</p>
+        <label>Password (at least 10 characters)<input id="create-pw" type="password" minlength="10" autocomplete="new-password" required></label>
+        <label>Repeat password<input id="create-pw2" type="password" minlength="10" autocomplete="new-password" required></label>
+        <div class="row"><button class="primary" type="submit">Create vault</button></div>
+      </form>
+      <p class="hint" id="unlock-msg"></p>
+    </section>
+
+    <div class="wrap" id="app" hidden>
+      <div class="strip">
+        <div class="stat"><span class="k">Owner</span><span class="v" id="s-owner">–</span></div>
+        <div class="stat"><span class="k">Balance</span><span class="v" id="s-balance">–</span></div>
+        <div class="stat"><span class="k">Vault contract</span><span class="v" id="s-contract">–</span></div>
+        <div class="stat"><span class="k">Sessions on chain</span><span class="v" id="s-count">–</span></div>
+        <div class="stat"><span class="k">Browser sensor</span><span class="v" id="s-sensor">not installed</span></div>
+      </div>
+
+      <div class="cols">
+        <section class="panel">
+          <header><h2>Signal viewer</h2><span class="pill pending" id="view-label">idle</span></header>
+          <canvas id="cv"></canvas>
+          <div id="scores" class="strip" hidden></div>
+          <p id="scores-note" class="hint" hidden></p>
+          <div id="capture" class="wrap" hidden>
+            <label>Type anything here. Only the timing of your keys is recorded, never the letters.
+              <textarea id="cap-text" rows="3" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea></label>
+            <div class="row">
+              <span class="mono" id="cap-count" style="flex:0 0 auto">20s</span>
+              <button type="button" class="primary" id="cap-stop">Stop and save</button>
+              <button type="button" id="cap-cancel">Cancel</button>
+            </div>
+          </div>
+          <div id="live-pad" class="wrap" hidden>
+            <label>Live mode: write here like a notepad. Scores update as you type and save themselves when you pause. Only the timing of your keys is recorded, never the letters.
+              <textarea id="live-text" rows="6" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea></label>
+          </div>
+          <div class="row">
+            <button class="primary" type="button" id="rec">Record new session</button>
+            <button type="button" id="live">Start live mode</button>
+            <button type="button" id="dec">Decrypt with my key</button>
+            <button type="button" class="danger" id="tamper">Tamper with local copy</button>
+            <button type="button" id="fund" hidden>Get test coins</button>
+            <button type="button" id="lock">Lock</button>
+          </div>
+          <p class="hint" id="status" aria-live="polite">Your typing rhythm is the signal. Only key timing is recorded, never the letters.</p>
+        </section>
+
+        <section class="panel">
+          <header><h2>Who can read my data</h2><span class="note">permissions live on chain</span></header>
+          <div id="apps"></div>
+          <p class="hint">These three are demo apps with their own chain accounts. "Request data" sends a real transaction from that app; the contract allows or denies it and records the attempt.</p>
+        </section>
+      </div>
+
+      <section class="panel" id="trend-panel">
+        <header><h2>Your trend</h2><span class="note">each session against your own normal</span></header>
+        <div class="legend" id="trend-legend" hidden><span><i style="background:var(--s1)"></i>Focus</span><span><i style="background:var(--s2)"></i>Fatigue</span><span><i style="background:var(--s3)"></i>Stress</span></div>
+        <div id="trend" hidden></div>
+        <p class="hint" id="trend-note"></p>
+      </section>
+
+      <div class="cols">
+        <section class="panel">
+          <header><h2>Encrypted sessions</h2><span class="note">fingerprints from the contract</span></header>
+          <div class="table"><table><thead><tr><th>Session</th><th>Stored</th><th>Fingerprint</th><th>This device</th></tr></thead><tbody id="sessions"></tbody></table></div>
+        </section>
+
+        <section class="panel">
+          <header><h2>Chain activity</h2><span class="note" id="events-note"></span></header>
+          <div class="table"><table><thead><tr><th>Event</th><th>Detail</th><th>Block</th><th>Tx</th></tr></thead><tbody id="events"></tbody></table></div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
+<script src="vault.js"></script>
+</body>
+</html>

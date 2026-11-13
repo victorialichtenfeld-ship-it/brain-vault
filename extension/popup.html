@@ -1,0 +1,16 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  body { font: 14px/1.45 system-ui, sans-serif; width: 270px; margin: 14px; color: #16181d; background: #fff; }
+  h1 { font-size: 15px; margin: 0 0 8px; }
+  p { margin: 0 0 10px; color: #5b6270; }
+  .row { display: flex; gap: 8px; }
+  button { font: inherit; padding: 6px 12px; border: 1px solid #cfd4dc; border-radius: 6px; background: #fff; color: inherit; cursor: pointer; }
+  b { color: #16181d; }
+  @media (prefers-color-scheme: dark) { body { color: #e6e8ec; background: #171a21; } p { color: #99a0ac; } b { color: #e6e8ec; } button { background: #171a21; border-color: #2a2f39; } }
+</style>
+<h1>Brain Data Vault Sensor</h1>
+<p id="state"></p>
+<p>Records only the timing of your keys and mouse. Never the letters, never the page, never password fields.</p>
+<div class="row"><button id="toggle"></button><button id="clear">Delete waiting</button></div>
+<script src="popup.js"></script>
