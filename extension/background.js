@@ -2,7 +2,7 @@
 // Holds recordings until the vault page collects and encrypts them. A recording
 // is timing numbers only: no letters, no page addresses.
 "use strict";
-const VAULT_ORIGINS = ["http://127.0.0.1:5180", "http://localhost:5180"];
+const VAULT_PAGES = ["http://127.0.0.1:5180/", "http://localhost:5180/", "https://victorialichtenfeld-ship-it.github.io/brain-vault/"];
 const MAX_WAITING = 200; // oldest recordings are dropped beyond this
 const BATCH = 10;        // recordings handed to the vault page per request
 
@@ -14,7 +14,7 @@ async function setPending(pending) {
   await chrome.storage.local.set({ pending });
   chrome.action.setBadgeText({ text: pending.length ? String(pending.length) : "" });
 }
-const fromVault = (sender) => VAULT_ORIGINS.some((o) => (sender.url || "").startsWith(o + "/"));
+const fromVault = (sender) => VAULT_PAGES.some((p) => (sender.url || "").startsWith(p));
 
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   if (!msg || sender.id !== chrome.runtime.id || !sender.tab) return;

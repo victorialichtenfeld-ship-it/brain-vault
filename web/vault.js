@@ -13,11 +13,14 @@
 
 const KEYSTORE = "brainvault.keystore.v1"; // encrypted JSON keystore (scrypt + AES-128-CTR)
 const IDLE_LOCK_MS = 10 * 60 * 1000;
-const LOG_WINDOW = 9000; // blocks of history to query; nodes cap eth_getLogs ranges
+let LOG_WINDOW = 9000; // blocks of history to query; nodes cap eth_getLogs ranges
 const SEED_MSG = "Brain Data Vault v1\n\nSigning this message unlocks your vault data key. Only sign it on the vault page.";
-const APP_FLOAT = ethers.parseEther("0.01"); // gas money sent to a demo app account
-const APP_MIN = ethers.parseEther("0.002");
-const FUND_BELOW = ethers.parseEther("0.05"); // offer test coins under this balance
+// Amounts for the local dev chain; boot() shrinks them on a public test chain,
+// where coins come from a faucet in small amounts and fees are tiny.
+let APP_FLOAT = ethers.parseEther("0.01"); // gas money sent to a demo app account
+let APP_MIN = ethers.parseEther("0.002");
+let FUND_BELOW = ethers.parseEther("0.05"); // ask for test coins under this balance
+const LOCAL_PAGE = ["127.0.0.1", "localhost"].includes(location.hostname);
 const CAPTURE_MS = 20000; // length of one typing recording
 const BASELINE_MIN = 3;    // other recordings needed before scores compare you to your own normal
 const LIVE_KEYS = 120;         // live mode saves a session every this many keys...
@@ -28,7 +31,7 @@ const HINT = "Your typing rhythm is the signal. Only key timing is recorded, nev
 const $ = (id) => document.getElementById(id);
 
 // Network settings; boot() overrides them from web/vault.config.json.
-let NET = { name: "Local dev chain", symbol: "ETH", evmRpc: "http://127.0.0.1:9545", chainId: 31337 };
+let NET = { name: "Local dev chain", symbol: "ETH", evmRpc: "http://127.0.0.1:9545", chainId: 31337, local: true };
 const short = (h, n = 6) => (h && h.length > 2 * n + 2 ? `${h.slice(0, n + 2)}…${h.slice(-n)}` : h || "");
 function esc(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -595,7 +598,10 @@ function render() {
   $("s-owner").textContent = short(S.address, 6); $("s-owner").title = S.address;
   $("s-balance").innerHTML = `${fmtCoin(S.balance, 4)} <small>${esc(NET.symbol)}</small>`;
   $("s-contract").textContent = short(S.cfg.address, 6); $("s-contract").title = S.cfg.address;
-  $("fund").hidden = S.balance >= FUND_BELOW; $("fund").disabled = S.busy;
+  const low = S.balance < FUND_BELOW;
+  $("fund").hidden = !low || !NET.local; $("fund").disabled = S.busy;
+  show("coins", low && !NET.local);
+  $("coins-addr").textContent = S.address;
   $("s-count").textContent = S.sessions.length;
 
   const sel = S.sessions.find((s) => s.id === S.selected);
@@ -725,6 +731,12 @@ $("tamper").addEventListener("click", () => {
 });
 
 $("lock").addEventListener("click", renderLocked);
+$("coins-copy").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText(S.address); $("coins-copy").textContent = "Copied"; }
+  catch { $("coins-copy").textContent = "Select and copy it"; }
+});
+// While the vault waits for test coins, look for them without a reload.
+setInterval(() => { if (S.owner && !S.busy && !live && !NET.local && S.balance < FUND_BELOW) refresh().catch(() => {}); }, 8000);
 $("live").addEventListener("click", () => (live ? stopLive() : startLive()));
 
 // Local dev chains (anvil, hardhat) can set a balance directly; real chains cannot.
@@ -783,17 +795,28 @@ new ResizeObserver(() => { if (!S.busy) redraw(); }).observe($("cv"));
 new ResizeObserver(() => { if (S.owner) drawTrend(); }).observe($("trend-panel"));
 
 (async function boot() {
+  // The local page reads the address deploy.sh wrote; the public site reads the
+  // committed public test chain settings.
   let cfg = null;
-  try { const r = await fetch("vault.config.json", { cache: "no-store" }); if (r.ok) cfg = await r.json(); } catch { /* not deployed */ }
-  if (!cfg || !ethers.isAddress(cfg.address)) return notice(`The vault contract is not deployed yet. Run <span class="mono">make chain</span>, then <span class="mono">make deploy</span>, then reload.`);
-  NET = { ...NET, chainId: Number(cfg.chainId), evmRpc: cfg.rpc || NET.evmRpc, name: cfg.name || NET.name, symbol: cfg.symbol || NET.symbol };
-  S.provider = new ethers.JsonRpcProvider(NET.evmRpc, NET.chainId, { staticNetwork: true, pollingInterval: 500 });
+  try { const r = await fetch(LOCAL_PAGE ? "vault.config.json" : "vault.public.json", { cache: "no-store" }); if (r.ok) cfg = await r.json(); } catch { /* not deployed */ }
+  if (!cfg || !ethers.isAddress(cfg.address)) return notice(LOCAL_PAGE
+    ? `The vault contract is not deployed yet. Run <span class="mono">make chain</span>, then <span class="mono">make deploy</span>, then reload.`
+    : `The vault is not live yet. Its contract is still being put on the public test chain. Check back soon.`);
+  const local = Number(cfg.chainId) === 31337;
+  NET = { ...NET, local, chainId: Number(cfg.chainId), evmRpc: cfg.rpc || NET.evmRpc, name: cfg.name || NET.name, symbol: cfg.symbol || NET.symbol };
+  if (!local) {
+    APP_FLOAT = ethers.parseEther("0.0002"); APP_MIN = ethers.parseEther("0.00005"); FUND_BELOW = ethers.parseEther("0.0005");
+    LOG_WINDOW = Number(cfg.logWindow) || LOG_WINDOW;
+    if (/^https:\/\//.test(cfg.faucet || "")) $("coins-faucet").href = cfg.faucet;
+  }
+  S.provider = new ethers.JsonRpcProvider(NET.evmRpc, NET.chainId, { staticNetwork: true, pollingInterval: local ? 500 : 1500 });
+  const fix = local ? ` Start it with <span class="mono">make chain</span>, run <span class="mono">make deploy</span>, then reload.` : ` Try again in a minute.`;
   let chainId;
   try { chainId = Number(await S.provider.send("eth_chainId", [])); }
-  catch { setConn(false); return notice(`Cannot reach the chain at <span class="mono">${esc(NET.evmRpc)}</span>. Start it with <span class="mono">make chain</span>, run <span class="mono">make deploy</span>, then reload.`); }
-  if (chainId !== NET.chainId) { setConn(false); return notice(`The chain at <span class="mono">${esc(NET.evmRpc)}</span> is chain ${chainId}, but the vault was deployed to chain ${esc(NET.chainId)}. Run <span class="mono">make deploy</span> again, then reload.`); }
+  catch { setConn(false); return notice(`Cannot reach the chain at <span class="mono">${esc(NET.evmRpc)}</span>.${fix}`); }
+  if (chainId !== NET.chainId) { setConn(false); return notice(`The chain at <span class="mono">${esc(NET.evmRpc)}</span> is chain ${chainId}, but the vault was deployed to chain ${esc(NET.chainId)}.`); }
   setConn(true);
-  if ((await S.provider.getCode(cfg.address)) === "0x") return notice(`No contract at <span class="mono">${esc(cfg.address)}</span>. The chain was probably restarted. Run <span class="mono">make deploy</span>, then reload.`);
+  if ((await S.provider.getCode(cfg.address)) === "0x") return notice(`No contract at <span class="mono">${esc(cfg.address)}</span>.${local ? " The chain was probably restarted. Run <span class=\"mono\">make deploy</span>, then reload." : ""}`);
   S.cfg = cfg;
   renderLocked();
 })();

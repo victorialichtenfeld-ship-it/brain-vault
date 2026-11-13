@@ -33,6 +33,15 @@ Install:
 The extension's button pauses it or deletes what is waiting. It does not see
 typing in other apps; that would need a desktop app.
 
+## Online
+
+The public site is https://victorialichtenfeld-ship-it.github.io/brain-vault/ and
+runs on the Base Sepolia test chain. Visitors create a vault in their own
+browser and need free test coins from a faucet to pay the small fees. `make
+deploy-public` deploys the contract there (the deploy key lives in the
+git-ignored `.keys/` folder) and writes `web/vault.public.json`; pushing to
+`main` republishes the site.
+
 Demo status: the scores are rough heuristics, not a medical reading, and the
 page itself hands data to
 an app once the contract allows the read. A real product needs a separate

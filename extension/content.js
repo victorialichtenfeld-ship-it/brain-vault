@@ -5,7 +5,7 @@
 // On the vault page it does not record; it only hands waiting recordings over.
 (() => {
   "use strict";
-  const VAULT_ORIGINS = ["http://127.0.0.1:5180", "http://localhost:5180"];
+  const VAULT_PAGES = ["http://127.0.0.1:5180/", "http://localhost:5180/", "https://victorialichtenfeld-ship-it.github.io/brain-vault/"];
   const KEYS = 120;      // hand over a recording every this many keys...
   const PAUSE_MS = 8000; // ...or after a pause this long
   const MIN_KEYS = 40;   // ...if at least this many keys were typed
@@ -14,7 +14,7 @@
   // The extension may be reloaded or removed while a page is open; then sending fails.
   const send = (msg) => { try { return chrome.runtime.sendMessage(msg).catch(() => null); } catch { return Promise.resolve(null); } };
 
-  if (VAULT_ORIGINS.includes(location.origin)) {
+  if (VAULT_PAGES.some((p) => location.href.startsWith(p))) {
     if (window.top !== window) return;
     window.addEventListener("message", async (e) => {
       if (e.source !== window || e.origin !== location.origin || !e.data || e.data.source !== "brainvault-page") return;

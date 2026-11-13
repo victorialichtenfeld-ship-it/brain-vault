@@ -170,3 +170,10 @@ tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
 .row > * { flex: 1 1 160px; }
 .row > button { flex: 0 0 auto; }
+
+/* test-coin instructions */
+a { color: var(--accent); }
+.steps { margin: 0; padding-left: 22px; display: grid; gap: 10px; }
+.steps .mono { overflow-wrap: anywhere; color: var(--ink); }
+.steps button { margin-left: 6px; padding: 4px 10px; }
+#coins { border-color: var(--warn); }

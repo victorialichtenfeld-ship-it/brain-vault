@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Deploys contracts/src/BrainVault.sol and writes web/vault.config.json
-# (git-ignored) so the page can find it.
+# Deploys contracts/src/BrainVault.sol and tells the page where it is: on the
+# local dev chain it writes web/vault.config.json (git-ignored); on any other
+# chain it writes web/vault.public.json, which the published site reads.
 # By default it signs with anvil's first built-in account, a publicly known
 # test key that is only good on a local dev chain. For any other chain set
 # VAULT_KEY_FILE to a file holding the deployer's private key.
@@ -18,7 +19,16 @@ TX=$(jq -r .transactionHash <<<"$OUT")
 BLOCK=$(cast receipt "$TX" blockNumber --rpc-url "$RPC")
 CHAIN=$(cast chain-id --rpc-url "$RPC")
 
-jq -n --arg a "$ADDR" --arg r "$RPC" --argjson c "$CHAIN" --argjson b "$BLOCK" \
-  '{address: $a, chainId: $c, deployBlock: $b, rpc: $r, name: "Local dev chain", symbol: "ETH"}' >"$ROOT/web/vault.config.json"
-echo "BrainVault deployed at $ADDR in block $BLOCK (chain $CHAIN)"
-echo "wrote web/vault.config.json; run 'make web' and open http://127.0.0.1:5180"
+if [ "$CHAIN" = 31337 ]; then
+  jq -n --arg a "$ADDR" --arg r "$RPC" --argjson c "$CHAIN" --argjson b "$BLOCK" \
+    '{address: $a, chainId: $c, deployBlock: $b, rpc: $r, name: "Local dev chain", symbol: "ETH"}' >"$ROOT/web/vault.config.json"
+  echo "BrainVault deployed at $ADDR in block $BLOCK (chain $CHAIN)"
+  echo "wrote web/vault.config.json; run 'make web' and open http://127.0.0.1:5180"
+else
+  # A public chain: write the settings the published site reads. This file is committed.
+  jq -n --arg a "$ADDR" --arg r "${PUBLIC_RPC:-$RPC}" --arg n "${CHAIN_NAME:-Public test chain}" --arg f "${FAUCET_URL:-}" \
+    --argjson c "$CHAIN" --argjson b "$BLOCK" --argjson w "${LOG_WINDOW:-9000}" \
+    '{address: $a, chainId: $c, deployBlock: $b, rpc: $r, name: $n, symbol: "ETH", logWindow: $w, faucet: $f}' >"$ROOT/web/vault.public.json"
+  echo "BrainVault deployed at $ADDR in block $BLOCK (chain $CHAIN)"
+  echo "wrote web/vault.public.json; commit and push it to update the public site"
+fi
