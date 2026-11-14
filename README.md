@@ -37,8 +37,13 @@ typing in other apps; that would need a desktop app.
 
 The public site is https://victorialichtenfeld-ship-it.github.io/brain-vault/ and
 runs on the Sepolia test chain. Visitors create a vault in their own
-browser and need free test coins to pay the small fees; the no-account faucet at
-https://sepolia-faucet.pk910.de/ hands them out. `make
+browser, and the page gets them free test coins by itself from the Drip
+contract (`contracts/src/Drip.sol`): one small drip per new vault, at most 20 an
+hour. The page asks for it with a sponsor key that is published in
+`web/vault.public.json` on purpose; the contract limits what that key can take,
+and its owner can replace the sponsor or withdraw the coins. If the drip is
+used up, the page falls back to the no-account faucet at
+https://sepolia-faucet.pk910.de/. `make deploy-drip` deploys and funds it. `make
 deploy-public` deploys the contract there (the deploy key lives in the
 git-ignored `.keys/` folder) and writes `web/vault.public.json`; pushing to
 `main` republishes the site.

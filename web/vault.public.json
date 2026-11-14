@@ -6,5 +6,9 @@
   "name": "Sepolia test chain",
   "symbol": "ETH",
   "logWindow": 9000,
-  "faucet": "https://sepolia-faucet.pk910.de/"
+  "faucet": "https://sepolia-faucet.pk910.de/",
+  "drip": {
+    "address": "0x565B2C25A91115169a3D3A06fACD682a55385569",
+    "sponsorKey": "0x27247e8884a515df92bac51d1452d23039532a77a06445c571f13747d1f6ae47"
+  }
 }

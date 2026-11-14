@@ -76,7 +76,7 @@ const APPS = [
 const S = {
   cfg: null, provider: null, owner: null, address: null, vault: null, dataKey: null,
   apps: [], sessions: [], events: [], eventsFrom: 0, balance: 0n,
-  selected: null, tampered: null, busy: false,
+  selected: null, tampered: null, busy: false, funding: false,
 };
 let idle = null;
 let redraw = () => {};
@@ -577,6 +577,7 @@ async function start(wallet) {
   bumpIdle();
   renderSensor();
   pullSensor();
+  autoFund();
 }
 
 function bumpIdle() {
@@ -610,7 +611,7 @@ function render() {
   $("s-contract").textContent = short(S.cfg.address, 6); $("s-contract").title = S.cfg.address;
   const low = S.balance < FUND_BELOW;
   $("fund").hidden = !low || !NET.local; $("fund").disabled = S.busy;
-  show("coins", low && !NET.local);
+  show("coins", low && !NET.local && !S.funding);
   $("coins-addr").textContent = S.address;
   $("s-count").textContent = S.sessions.length;
 
@@ -691,6 +692,40 @@ async function mined(txPromise, what) {
   return r;
 }
 const eventIn = (receipt, name) => receipt.logs.map((l) => S.vault.interface.parseLog(l)).find((e) => e && e.name === name);
+
+// ---------- free test coins ----------
+// On the public test chain a new vault asks the Drip contract for its first
+// coins, using the sponsor key published in vault.public.json. That key is
+// public on purpose; the contract limits what it can do. If the drip is
+// refused (already used, hourly limit, empty), the faucet steps show instead.
+async function autoFund() {
+  const d = S.cfg.drip;
+  if (NET.local || S.balance >= FUND_BELOW || !d || !ethers.isAddress(d.address) || !/^0x[0-9a-fA-F]{64}$/.test(d.sponsorKey || "")) return;
+  S.funding = true;
+  const me = S.address;
+  await act(async () => {
+    const sponsor = new ethers.Wallet(d.sponsorKey, S.provider);
+    const drip = new ethers.Contract(d.address, ["function drip(address to)", "error AlreadyFunded()", "error RateLimited()", "error Empty()", "error NotSponsor()"], sponsor);
+    for (let attempt = 1; ; attempt++) {
+      try {
+        // The sponsor's top-up depends on its balance after gas is reserved, which
+        // the estimate cannot see, so give it room.
+        const gasLimit = (await drip.drip.estimateGas(me)) * 13n / 10n + 60000n;
+        await mined(drip.drip(me, { gasLimit }), "Getting your free test coins (about 15 seconds)");
+        if (S.address === me) status("Free test coins arrived. You're all set: record a session.");
+        return;
+      } catch (err) {
+        // Two visitors at once can collide on the sponsor's nonce; one retry fixes that.
+        const why = err.revert?.name || err.shortMessage || "";
+        if (attempt < 2 && !/AlreadyFunded|RateLimited|Empty/.test(why)) { await new Promise((r) => setTimeout(r, 4000)); continue; }
+        if (S.address === me) status(/RateLimited/.test(why) ? "Lots of new vaults this hour, so the free coins are paused. Use the faucet steps above, or try again later."
+          : /Empty/.test(why) ? "The free-coin pot is empty right now. Use the faucet steps above."
+          : "Couldn't get free coins automatically. Use the faucet steps above.", true);
+        return;
+      }
+    }
+  }).finally(() => { S.funding = false; if (S.owner) render(); });
+}
 
 // ---------- actions ----------
 // Encrypts a recording, writes its fingerprint to the chain and keeps the
@@ -826,7 +861,14 @@ new ResizeObserver(() => { if (S.owner) drawTrend(); }).observe($("trend-panel")
   if (chainId !== NET.chainId) { setConn(false); return notice(`The chain at <span class="mono">${esc(NET.evmRpc)}</span> is chain ${chainId}, but the vault was deployed to chain ${esc(NET.chainId)}.`); }
   setConn(true);
   if (!local) {
-    // Size the amounts from the chain's current fee, with a floor for quiet days.
+    // Public test chains are nearly idle, yet ethers would offer a 1 gwei tip and
+    // reserve far more test coins per transaction than a new vault holds. Offer a
+    // small tip over the current base fee instead.
+    S.provider.getFeeData = async () => {
+      const base = (await S.provider.getBlock("latest"))?.baseFeePerGas ?? 0n, tip = 10000000n; // 0.01 gwei
+      return new ethers.FeeData(null, base * 4n + tip, tip);
+    };
+    // Size the amounts from that fee, with a floor.
     const fee = await S.provider.getFeeData().catch(() => ({}));
     const oneTx = (fee.maxFeePerGas ?? fee.gasPrice ?? 0n) * 350000n; // a save costs about 250k gas on Sepolia
     const atLeast = (a, b) => (a > b ? a : b);
