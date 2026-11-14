@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Brain Data Vault</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
+<canvas id="bg" aria-hidden="true"></canvas>
 <div class="wrap">
   <header class="top">
     <span class="brand">Brain Data Vault <span class="tick">demo</span></span>
@@ -22,30 +23,43 @@
       <p id="notice-text"></p>
     </section>
 
-    <section class="panel narrow" id="locked" hidden>
-      <h1 id="locked-title">Unlock your vault</h1>
-      <p class="hint">Your typing-rhythm data is encrypted in this browser. The chain stores only its fingerprint and who may read it.</p>
-      <form id="f-unlock" class="wrap" hidden>
-        <label>Vault password<input id="unlock-pw" type="password" autocomplete="current-password" required></label>
-        <div class="row"><button class="primary" type="submit">Unlock</button></div>
-      </form>
-      <form id="f-create" class="wrap" hidden>
-        <p class="hint">A new key is generated in this browser and stored only here, encrypted with your password. It is never shown or sent anywhere. If you forget the password, the vault cannot be opened.</p>
-        <label>Password (at least 10 characters)<input id="create-pw" type="password" minlength="10" autocomplete="new-password" required></label>
-        <label>Repeat password<input id="create-pw2" type="password" minlength="10" autocomplete="new-password" required></label>
-        <div class="row"><button class="primary" type="submit">Create vault</button></div>
-      </form>
-      <p class="hint" id="unlock-msg"></p>
+    <section class="hero" id="locked" hidden>
+      <div class="hero-copy">
+        <p class="eyebrow">Neural telemetry &middot; encrypted &middot; on chain</p>
+        <h1 class="hero-title">Your keyboard<br>is a <span class="glow">brain scanner.</span></h1>
+        <p class="lede">The rhythm of your typing gives away your focus, fatigue and stress. Brain Data Vault reads it, encrypts it in your browser, and lets only the apps you choose see it.</p>
+        <div class="try">
+          <label for="try-in">Try it: type anything. Nothing here is saved.</label>
+          <input id="try-in" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="the quick brown fox&hellip;">
+          <div class="try-read">
+            <span><b id="try-speed">&ndash;</b>keys / min</span>
+            <span><b id="try-steady">&ndash;</b>steadiness</span>
+            <span><b id="try-keys">0</b>keys</span>
+          </div>
+        </div>
+        <ol class="pillars">
+          <li><b>01</b><strong>Reads rhythm, not words</strong><span>Only the timing of your keys. Never the letters.</span></li>
+          <li><b>02</b><strong>Locked on your device</strong><span>AES-256 encryption before anything is saved.</span></li>
+          <li><b>03</b><strong>You hold the keys</strong><span>Every read is allowed or denied on chain, in public.</span></li>
+        </ol>
+      </div>
+      <div class="panel hero-card">
+        <h2 id="locked-title">Unlock your vault</h2>
+        <form id="f-unlock" class="wrap" hidden>
+          <label>Vault password<input id="unlock-pw" type="password" autocomplete="current-password" required></label>
+          <div class="row"><button class="primary big" type="submit">Unlock</button></div>
+        </form>
+        <form id="f-create" class="wrap" hidden>
+          <p class="hint">A key is made in this browser and locked with your password. It never leaves this device. Forget the password and the vault is gone for good.</p>
+          <label>Password (at least 10 characters)<input id="create-pw" type="password" minlength="10" autocomplete="new-password" required></label>
+          <label>Repeat password<input id="create-pw2" type="password" minlength="10" autocomplete="new-password" required></label>
+          <div class="row"><button class="primary big" type="submit">Create my vault</button></div>
+        </form>
+        <p class="hint" id="unlock-msg"></p>
+      </div>
     </section>
 
     <div class="wrap" id="app" hidden>
-      <div class="strip">
-        <div class="stat"><span class="k">Owner</span><span class="v" id="s-owner">–</span></div>
-        <div class="stat"><span class="k">Balance</span><span class="v" id="s-balance">–</span></div>
-        <div class="stat"><span class="k">Vault contract</span><span class="v" id="s-contract">–</span></div>
-        <div class="stat"><span class="k">Sessions on chain</span><span class="v" id="s-count">–</span></div>
-        <div class="stat"><span class="k">Browser sensor</span><span class="v" id="s-sensor">not installed</span></div>
-      </div>
 
       <section class="panel" id="coins" hidden>
         <header><h2>Get free test coins first</h2><span class="note">one time, costs nothing</span></header>
@@ -60,7 +74,7 @@
       <div class="cols">
         <section class="panel">
           <header><h2>Signal viewer</h2><span class="pill pending" id="view-label">idle</span></header>
-          <canvas id="cv"></canvas>
+          <div class="scope"><canvas id="cv"></canvas></div>
           <div id="scores" class="strip" hidden></div>
           <p id="scores-note" class="hint" hidden></p>
           <div id="capture" class="wrap" hidden>
@@ -112,10 +126,19 @@
           <div class="table"><table><thead><tr><th>Event</th><th>Detail</th><th>Block</th><th>Tx</th></tr></thead><tbody id="events"></tbody></table></div>
         </section>
       </div>
+
+      <div class="strip" id="details">
+        <div class="stat"><span class="k">Owner</span><span class="v" id="s-owner">–</span></div>
+        <div class="stat"><span class="k">Balance</span><span class="v" id="s-balance">–</span></div>
+        <div class="stat"><span class="k">Vault contract</span><span class="v" id="s-contract">–</span></div>
+        <div class="stat"><span class="k">Sessions on chain</span><span class="v" id="s-count">–</span></div>
+        <div class="stat"><span class="k">Browser sensor</span><span class="v" id="s-sensor">not installed</span></div>
+      </div>
     </div>
   </main>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
 <script src="vault.js"></script>
+<script src="bg.js"></script>
 </body>
 </html>

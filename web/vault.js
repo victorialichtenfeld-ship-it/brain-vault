@@ -234,12 +234,22 @@ function versusNormal(v) {
 }
 function hideScores() { $("scores").hidden = $("scores-note").hidden = true; }
 function renderScores(d, base, lead = "") {
-  const personal = base.n >= BASELINE_MIN, sc = personal ? personalScore(d, base) : d.scores;
-  const cell = (k, v, sub) => `<div class="stat"><span class="k">${k}</span><span class="v">${v}</span>${sub ? `<span class="k">${sub}</span>` : ""}</div>`;
-  const of100 = (k, v) => cell(k, `${v}<small>/100</small>`, personal && versusNormal(v));
-  const vs = sc.speedVs;
-  $("scores").innerHTML = of100("Focus", sc.focus) + of100("Fatigue", sc.fatigue) + of100("Stress", sc.stress)
-    + cell("Speed", `${sc.speed} <small>keys/min</small>`, personal && (Math.abs(vs) < 5 ? "normal for you" : `${Math.abs(vs)}% ${vs > 0 ? "faster" : "slower"} than usual`));
+  const personal = base.n >= BASELINE_MIN, sc = personal ? personalScore(d, base) : d.scores, vs = sc.speedVs;
+  const gauge = (k, v, p, color, sub) => `<div class="stat gauge" style="--p:${p};--c:var(${color})">
+    <div class="ring"><b data-to="${v}">${v}</b></div>
+    <div class="gauge-text"><span class="k">${k}</span>${sub ? `<span class="sub">${sub}</span>` : ""}</div></div>`;
+  const of100 = (k, v, color) => gauge(k, v, v, color, personal ? versusNormal(v) : "out of 100");
+  $("scores").innerHTML = of100("Focus", sc.focus, "--s1") + of100("Fatigue", sc.fatigue, "--s2") + of100("Stress", sc.stress, "--s3")
+    + gauge("Speed", sc.speed, Math.min(100, sc.speed / 6), "--muted", personal && Math.abs(vs) >= 5 ? `keys/min · ${Math.abs(vs)}% ${vs > 0 ? "faster" : "slower"} than usual` : "keys per minute");
+  // Live mode redraws every second, so only animate a one-off reading.
+  $("scores").classList.toggle("still", Boolean(lead));
+  if (!lead && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    $("scores").querySelectorAll("[data-to]").forEach((el) => {
+      const to = Number(el.dataset.to), t0 = performance.now();
+      const step = (t) => { const k = Math.max(0, Math.min(1, (t - t0) / 1000)); el.textContent = Math.round(to * (1 - (1 - k) ** 3)); if (k < 1) requestAnimationFrame(step); };
+      requestAnimationFrame(step);
+    });
+  }
   $("scores-note").textContent = lead + (personal
     ? `Compared with your normal, learned from your ${base.n} other recordings. 50 means the same as usual.`
     : `Learning your normal: ${base.n} of ${BASELINE_MIN} other recordings so far. Until then these scores use general rules.`);
