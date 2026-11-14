@@ -1,0 +1,10 @@
+{
+  "address": "0xf7fd97B35be693882A3C9d0c182F987A50c875ED",
+  "chainId": 11155111,
+  "deployBlock": 12129815,
+  "rpc": "https://ethereum-sepolia-rpc.publicnode.com",
+  "name": "Sepolia test chain",
+  "symbol": "ETH",
+  "logWindow": 9000,
+  "faucet": "https://sepolia-faucet.pk910.de/"
+}
