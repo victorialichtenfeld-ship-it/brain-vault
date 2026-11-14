@@ -15,6 +15,7 @@
     <span class="brand">Brain Data Vault <span class="tick">demo</span></span>
     <span style="flex:1"></span>
     <div class="conn"><span id="conn-dot" class="dot"></span><span id="conn-text">Connecting…</span></div>
+    <button type="button" class="ghost small" id="lock">Lock vault</button>
   </header>
 
   <main class="wrap">
@@ -71,49 +72,54 @@
         </ol>
       </section>
 
-      <div class="cols">
-        <section class="panel">
-          <header><h2>Signal viewer</h2><span class="pill pending" id="view-label">idle</span></header>
+      <section class="panel signal">
+        <header><h2>Live signal</h2><span class="pill pending" id="view-label">idle</span></header>
+        <div class="signal-grid">
           <div class="scope"><canvas id="cv"></canvas></div>
-          <div id="scores" class="strip" hidden></div>
-          <p id="scores-note" class="hint" hidden></p>
-          <div id="capture" class="wrap" hidden>
-            <label>Type anything here. Only the timing of your keys is recorded, never the letters.
-              <textarea id="cap-text" rows="3" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea></label>
-            <div class="row">
-              <span class="mono" id="cap-count" style="flex:0 0 auto">20s</span>
-              <button type="button" class="primary" id="cap-stop">Stop and save</button>
-              <button type="button" id="cap-cancel">Cancel</button>
-            </div>
+          <div class="readout">
+            <div id="scores" class="strip" hidden></div>
+            <div id="scores-empty"><span class="k">Brain state</span><p>Decrypt a session to read your focus, fatigue and stress.</p></div>
+            <p id="scores-note" class="hint" hidden></p>
           </div>
-          <div id="live-pad" class="wrap" hidden>
-            <label>Live mode: write here like a notepad. Scores update as you type and save themselves when you pause. Only the timing of your keys is recorded, never the letters.
-              <textarea id="live-text" rows="6" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea></label>
-          </div>
+        </div>
+        <div id="capture" class="wrap" hidden>
+          <label>Type anything here. Only the timing of your keys is recorded, never the letters.
+            <textarea id="cap-text" rows="3" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea></label>
           <div class="row">
-            <button class="primary" type="button" id="rec">Record new session</button>
-            <button type="button" id="live">Start live mode</button>
-            <button type="button" id="dec">Decrypt with my key</button>
-            <button type="button" class="danger" id="tamper">Tamper with local copy</button>
-            <button type="button" id="fund" hidden>Get test coins</button>
-            <button type="button" id="lock">Lock</button>
+            <span class="countdown" id="cap-count">20s</span>
+            <button type="button" class="primary" id="cap-stop">Stop and save</button>
+            <button type="button" id="cap-cancel">Cancel</button>
           </div>
-          <p class="hint" id="status" aria-live="polite">Your typing rhythm is the signal. Only key timing is recorded, never the letters.</p>
+        </div>
+        <div id="live-pad" class="wrap" hidden>
+          <label>Live mode: write here like a notepad. Scores update as you type and save themselves when you pause. Only the timing of your keys is recorded, never the letters.
+            <textarea id="live-text" rows="6" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea></label>
+        </div>
+        <div class="actions">
+          <button class="primary" type="button" id="rec">Record new session</button>
+          <button type="button" class="outline" id="live">Start live mode</button>
+          <button type="button" id="fund" hidden>Get test coins</button>
+          <span class="spacer"></span>
+          <button type="button" class="ghost small" id="dec">Decrypt with my key</button>
+          <button type="button" class="ghost small danger" id="tamper">Tamper with local copy</button>
+        </div>
+        <p class="hint" id="status" aria-live="polite">Your typing rhythm is the signal. Only key timing is recorded, never the letters.</p>
+      </section>
+
+      <div class="cols wide-narrow">
+        <section class="panel" id="trend-panel">
+          <header><h2>Your trend</h2><span class="note">each session against your own normal</span></header>
+          <div class="legend" id="trend-legend" hidden><span><i style="background:var(--s1)"></i>Focus</span><span><i style="background:var(--s2)"></i>Fatigue</span><span><i style="background:var(--s3)"></i>Stress</span></div>
+          <div id="trend" hidden></div>
+          <p class="hint" id="trend-note"></p>
         </section>
 
         <section class="panel">
-          <header><h2>Who can read my data</h2><span class="note">permissions live on chain</span></header>
+          <header><h2>Who can read it</h2><span class="note">enforced on chain</span></header>
           <div id="apps"></div>
-          <p class="hint">These three are demo apps with their own chain accounts. "Request data" sends a real transaction from that app; the contract allows or denies it and records the attempt.</p>
+          <p class="hint">Demo apps with their own chain accounts. "Request data" sends a real transaction from that app; the contract allows or denies it and records the attempt.</p>
         </section>
       </div>
-
-      <section class="panel" id="trend-panel">
-        <header><h2>Your trend</h2><span class="note">each session against your own normal</span></header>
-        <div class="legend" id="trend-legend" hidden><span><i style="background:var(--s1)"></i>Focus</span><span><i style="background:var(--s2)"></i>Fatigue</span><span><i style="background:var(--s3)"></i>Stress</span></div>
-        <div id="trend" hidden></div>
-        <p class="hint" id="trend-note"></p>
-      </section>
 
       <div class="cols">
         <section class="panel">

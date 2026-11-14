@@ -67,10 +67,11 @@ const ABI = [
   "event ReadAllowed(address indexed owner, address indexed app, uint256 indexed sessionId)",
   "event ReadDenied(address indexed owner, address indexed app, uint256 indexed sessionId)",
 ];
+const EVENT_LABEL = { SessionStored: "Session stored", AccessGranted: "Access granted", AccessRevoked: "Access revoked", ReadAllowed: "Read allowed", ReadDenied: "Read denied" };
 const APPS = [
-  { id: "focus", name: "Focus Coach", desc: "Wellness app" },
-  { id: "lab", name: "Sleep Research Lab", desc: "University study" },
-  { id: "ads", name: "AdCorp", desc: "Advertising network" },
+  { id: "focus", name: "Focus Coach", desc: "Wellness app", color: "--s1" },
+  { id: "lab", name: "Sleep Research Lab", desc: "University study", color: "--s3" },
+  { id: "ads", name: "AdCorp", desc: "Advertising network", color: "--s2" },
 ];
 
 const S = {
@@ -624,19 +625,18 @@ function render() {
   $("tamper").textContent = sel && S.tampered === sel.id ? "Undo tampering" : "Tamper with local copy";
 
   $("apps").innerHTML = S.apps.map((a) => `
-    <div class="app-row">
-      <div><strong>${esc(a.name)}</strong> <span class="pill ${a.granted ? "ok" : "fail"}">${a.granted ? "allowed" : "blocked"}</span>
-        <div class="hint">${esc(a.desc)} · <span class="mono">${short(a.wallet.address, 4)}</span></div></div>
-      <div class="row">
-        <button type="button" data-toggle="${a.id}" ${S.busy ? "disabled" : ""}>${a.granted ? "Revoke" : "Grant"}</button>
-        <button type="button" data-request="${a.id}" ${S.busy ? "disabled" : ""}>Request data</button>
-      </div>
+    <div class="app-card${a.granted ? " on" : ""}" style="--c:var(${a.color})">
+      <span class="app-avatar" aria-hidden="true">${esc(a.name[0])}</span>
+      <div class="app-info"><strong>${esc(a.name)}</strong><span>${esc(a.desc)} · <span class="mono">${short(a.wallet.address, 4)}</span></span></div>
+      <button type="button" class="switch" role="switch" aria-checked="${a.granted}" aria-label="Allow ${esc(a.name)}" title="${a.granted ? "Revoke" : "Grant"} access" data-toggle="${a.id}" ${S.busy ? "disabled" : ""}><span></span></button>
+      <div class="app-foot"><span class="ev ${a.granted ? "ok" : "bad"}">${a.granted ? "Allowed" : "Blocked"}</span>
+        <button type="button" class="ghost small" data-request="${a.id}" ${S.busy ? "disabled" : ""}>Request data</button></div>
     </div>`).join("");
 
   $("sessions").innerHTML = S.sessions.length ? S.sessions.slice().reverse().map((s) => `
     <tr class="pick ${s.id === S.selected ? "sel" : ""}" data-session="${s.id}">
       <td>${sessionName(s.id)}</td><td>${ago(s.storedAt)}</td><td>${short(s.fingerprint, 8)}</td>
-      <td>${!s.local ? `<span class="muted">not stored here</span>` : matchesChain(s) ? `<span class="pill ok">matches chain</span>` : `<span class="pill fail">altered</span>`}</td>
+      <td>${!s.local ? `<span class="muted">not stored here</span>` : matchesChain(s) ? `<span class="ev ok">Verified</span>` : `<span class="ev bad">Altered</span>`}</td>
     </tr>`).join("") : `<tr><td colspan="4" class="empty">No sessions yet. Record one to write its fingerprint to the chain.</td></tr>`;
 
   const appName = (addr) => S.apps.find((a) => a.wallet.address === addr)?.name || (addr === S.address ? "you" : short(addr, 4));
@@ -647,7 +647,7 @@ function render() {
   };
   $("events-note").textContent = `since block ${S.eventsFrom.toLocaleString("en-US")}`;
   $("events").innerHTML = S.events.length ? S.events.map(({ log, ev }) => `
-    <tr><td><span class="pill ${ev.name === "ReadDenied" || ev.name === "AccessRevoked" ? "fail" : "ok"}">${ev.name}</span></td>
+    <tr><td><span class="ev ${ev.name === "ReadDenied" || ev.name === "AccessRevoked" ? "bad" : ev.name === "SessionStored" ? "info" : "ok"}">${EVENT_LABEL[ev.name] || ev.name}</span></td>
       <td>${detail(ev)}</td>
       <td>${log.blockNumber.toLocaleString("en-US")}</td>
       <td title="${log.transactionHash}">${short(log.transactionHash, 5)}</td></tr>`).join("")
@@ -801,7 +801,9 @@ $("sessions").addEventListener("click", (e) => {
 });
 
 $("apps").addEventListener("click", (e) => {
-  const { toggle, request } = e.target.dataset;
+  const el = e.target.closest("[data-toggle], [data-request]");
+  if (!el) return;
+  const { toggle, request } = el.dataset;
   const app = S.apps.find((a) => a.id === (toggle || request));
   if (!app) return;
   if (toggle) act(async () => {
