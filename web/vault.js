@@ -818,7 +818,7 @@ new ResizeObserver(() => { if (S.owner) drawTrend(); }).observe($("trend-panel")
   if (!local) {
     // Size the amounts from the chain's current fee, with a floor for quiet days.
     const fee = await S.provider.getFeeData().catch(() => ({}));
-    const oneTx = (fee.maxFeePerGas ?? fee.gasPrice ?? 0n) * 120000n;
+    const oneTx = (fee.maxFeePerGas ?? fee.gasPrice ?? 0n) * 350000n; // a save costs about 250k gas on Sepolia
     const atLeast = (a, b) => (a > b ? a : b);
     APP_MIN = atLeast(oneTx * 2n, ethers.parseEther("0.00002"));
     APP_FLOAT = APP_MIN * 4n;
