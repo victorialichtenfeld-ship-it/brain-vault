@@ -131,7 +131,9 @@ function label(text, cls) { const l = $("view-label"); l.textContent = text; l.c
 function drawWave(samples, upto = samples.length) {
   redraw = () => drawWave(samples, upto);
   const { g, w, h } = ctx2d();
-  g.strokeStyle = g.shadowColor = cssVar("--accent"); g.shadowBlur = 10; g.lineWidth = 1.6; g.lineJoin = "round"; g.beginPath();
+  const ink = g.createLinearGradient(0, 0, w, 0);
+  ink.addColorStop(0, "#c8ff3e"); ink.addColorStop(0.55, "#3ee6ff"); ink.addColorStop(1, "#9b7bff");
+  g.strokeStyle = ink; g.shadowColor = "#3ee6ff"; g.shadowBlur = 12; g.lineWidth = 1.6; g.lineJoin = "round"; g.beginPath();
   for (let i = 0; i < upto; i++) {
     const x = (i / samples.length) * w, y = h / 2 - samples[i] * h * 0.35;
     if (i) g.lineTo(x, y); else g.moveTo(x, y);
